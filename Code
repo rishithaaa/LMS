@@ -1,0 +1,385 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.sql.*;
+
+public class LibraryManagementSystemUI extends JFrame {
+    private JTextField bookNameField;
+    private JTextField userNameField;
+    private JTextField authorField;
+    private JTextField phoneNumberField; // Added phone number field
+    private JButton addButton;
+    private JButton displayButton;
+    private JButton deleteButton;
+    private JButton searchButton;
+    private JTextField searchField;
+    private JButton modifyButton;
+    private JTextArea displayArea;
+
+    public LibraryManagementSystemUI() {
+        setTitle("Library Management System");
+        setSize(600, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        // Components
+        bookNameField = new JTextField(20);
+        userNameField = new JTextField(20);
+        authorField = new JTextField(20);
+        phoneNumberField = new JTextField(20); // Added phone number field
+        addButton = createStyledButton("Add Book", new Color(139, 69, 19), Color.BLACK, "add.png");
+        displayButton = createStyledButton("Display Books", new Color(165, 42, 42), Color.BLACK, "display.png");
+        deleteButton = createStyledButton("Delete Book", new Color(139, 69, 19), Color.BLACK, "delete.png");
+        searchButton = createStyledButton("Search", new Color(139, 69, 19), Color.BLACK, getTitle());
+        searchField = new JTextField(20);
+        modifyButton = createStyledButton("Modify Book", new Color(139, 69, 19), Color.BLACK, getTitle());
+        displayArea = new JTextArea(10, 30);
+
+        // Layout
+        setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
+        add(createStyledLabel("Book Name:", new Color(139, 69, 19)));
+        add(bookNameField);
+        add(createStyledLabel("Your Name:", new Color(139, 69, 19)));
+        add(userNameField);
+        add(createStyledLabel("Author:", new Color(139, 69, 19)));
+        add(authorField);
+        add(createStyledLabel("Phone Number:", new Color(139, 69, 19))); // Added phone number label
+        add(phoneNumberField); // Added phone number field
+        add(addButton);
+        add(displayButton);
+        add(deleteButton);
+        add(createStyledLabel("Search:", new Color(139, 69, 19)));
+        add(searchField);
+        add(searchButton);
+        add(modifyButton);
+        add(new JScrollPane(displayArea));
+
+        // Set window background color to beige
+        getContentPane().setBackground(new Color(245, 230, 200));
+
+        // Event listeners
+        addButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                addBook();
+            }
+        });
+
+        displayButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                displayBooks();
+            }
+        });
+
+        deleteButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                deleteBook();
+            }
+        });
+
+        searchButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                searchBooks();
+            }
+        });
+
+        modifyButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                modifyBook();
+            }
+        });
+    }
+
+    private JButton createStyledButton(String text, Color bgColor, Color textColor, String iconName) {
+        JButton button = new JButton(text);
+        button.setBackground(bgColor);
+        button.setForeground(textColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
+        button.setPreferredSize(new Dimension(150, 30));
+        button.setFont(new Font("Arial", Font.BOLD, 12));
+
+        // Set button icon
+        try {
+            ImageIcon icon = new ImageIcon(getClass().getResource(iconName));
+            button.setIcon(icon);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Add responsiveness to the button
+        button.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                buttonClicked(text);
+            }
+        });
+
+        return button;
+    }
+
+    private JLabel createStyledLabel(String text, Color textColor) {
+        JLabel label = new JLabel(text);
+        label.setForeground(textColor);
+        label.setFont(new Font("Arial", Font.BOLD, 12));
+        return label;
+    }
+
+    private void buttonClicked(String buttonText) {
+        switch (buttonText) {
+            case "Add Book":
+                addBook();
+                break;
+            case "Display Books":
+                displayBooks();
+                break;
+            case "Delete Book":
+                deleteBook();
+                break;
+            case "Search":
+                searchBooks();
+                break;
+            case "Modify Book":
+                modifyBook();
+                break;
+        }
+    }
+
+    private void addBook() {
+        String bookName = bookNameField.getText();
+        String userName = userNameField.getText();
+        String authorName = authorField.getText();
+        String phoneNumber = phoneNumberField.getText(); // Added phone number
+        if (!bookName.isEmpty() && !userName.isEmpty() && !authorName.isEmpty() && !phoneNumber.isEmpty()) {
+            try (Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/library", "root", "root1234")) {
+                String query = "INSERT INTO books (name, user_name, author, phone_number) VALUES (?, ?, ?, ?)";
+                try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+                    preparedStatement.setString(1, bookName);
+                    preparedStatement.setString(2, userName);
+                    preparedStatement.setString(3, authorName);
+                    preparedStatement.setString(4, phoneNumber); // Set phone number
+                    preparedStatement.executeUpdate();
+                    JOptionPane.showMessageDialog(this, "Book added successfully!");
+                    bookNameField.setText("");
+                    userNameField.setText("");
+                    authorField.setText("");
+                    phoneNumberField.setText(""); // Clear phone number field
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error adding book!");
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Please enter book name, your name, author name, and phone number.");
+        }
+    }
+
+    private void displayBooks() {
+        displayArea.setText("");
+        try (Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/library", "root", "root1234")) {
+            String query = "SELECT * FROM books";
+            try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+                ResultSet resultSet = preparedStatement.executeQuery();
+                while (resultSet.next()) {
+                    String bookInfo = resultSet.getString("name") + " - " + resultSet.getString("user_name") +
+                            " - " + resultSet.getString("author") + " - " + resultSet.getString("phone_number");
+                    displayArea.append(bookInfo + "\n");
+                }
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error displaying books!");
+        }
+    }
+
+    private void deleteBook() {
+        String bookName = bookNameField.getText();
+        String userName = userNameField.getText();
+        if (!bookName.isEmpty() && !userName.isEmpty()) {
+            try (Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/library", "root", "root1234")) {
+                String query = "DELETE FROM books WHERE name=? AND user_name=?";
+                try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+                    preparedStatement.setString(1, bookName);
+                    preparedStatement.setString(2, userName);
+                    int rowsAffected = preparedStatement.executeUpdate();
+                    if (rowsAffected > 0) {
+                        JOptionPane.showMessageDialog(this, "Book deleted successfully!");
+                        bookNameField.setText("");
+                        userNameField.setText("");
+                        authorField.setText("");
+                        phoneNumberField.setText(""); // Clear phone number field
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Book not found for deletion.");
+                    }
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error deleting book!");
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Please enter both book name and your name.");
+        }
+    }
+
+    private void searchBooks() {
+        String searchTerm = searchField.getText();
+        if (!searchTerm.isEmpty()) {
+            displayArea.setText("");
+            try (Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/library", "root", "root1234")) {
+                String query = "SELECT * FROM books WHERE name LIKE ? OR user_name LIKE ? OR author LIKE ? OR phone_number LIKE ?";
+                try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+                    for (int i = 1; i <= 4; i++) {
+                        preparedStatement.setString(i, "%" + searchTerm + "%");
+                    }
+                    ResultSet resultSet = preparedStatement.executeQuery();
+                    while (resultSet.next()) {
+                        String bookInfo = resultSet.getString("name") + " - " + resultSet.getString("user_name") +
+                                " - " + resultSet.getString("author") + " - " + resultSet.getString("phone_number");
+                        displayArea.append(bookInfo + "\n");
+                    }
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error searching books!");
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Please enter a search term.");
+        }
+    }
+
+    private void modifyBook() {
+        String bookName = bookNameField.getText();
+        String userName = userNameField.getText();
+        String authorName = authorField.getText();
+        String phoneNumber = phoneNumberField.getText(); // Added phone number
+        if (!bookName.isEmpty() && !userName.isEmpty()) {
+            try (Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/library", "root", "root1234")) {
+                String query = "UPDATE books SET author=?, user_name=?, phone_number=? WHERE name=?";
+                try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+                    preparedStatement.setString(1, authorName);
+                    preparedStatement.setString(2, userName);
+                    preparedStatement.setString(3, phoneNumber); // Set phone number
+                    preparedStatement.setString(4, bookName);
+                    int rowsAffected = preparedStatement.executeUpdate();
+                    if (rowsAffected > 0) {
+                        JOptionPane.showMessageDialog(this, "Book details modified successfully!");
+                        bookNameField.setText("");
+                        userNameField.setText("");
+                        authorField.setText("");
+                        phoneNumberField.setText(""); // Clear phone number field
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Book not found for modification.");
+                    }
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error modifying book details!");
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Please enter both book name and your name.");
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            LoginUI loginUI = new LoginUI();
+            loginUI.setVisible(true);
+        });
+    }
+}
+
+class LoginUI extends JFrame {
+    private JTextField usernameField;
+    private JPasswordField passwordField;
+    private JButton loginButton;
+
+    public LoginUI() {
+        setTitle("Login");
+        setSize(300, 150);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        // Components
+        usernameField = new JTextField(15);
+        passwordField = new JPasswordField(15);
+        loginButton = createStyledButton("Login", new Color(139, 69, 19), Color.BLACK);
+
+        // Layout
+        setLayout(new GridLayout(4, 2));
+        add(createStyledLabel("Username:", new Color(139, 69, 19)));
+        add(usernameField);
+        add(createStyledLabel("Password:", new Color(139, 69, 19)));
+        add(passwordField);
+        add(new JLabel()); // Empty label for spacing
+        add(loginButton);
+
+        // Set window background color to beige
+        getContentPane().setBackground(new Color(245, 230, 200));
+
+        // Event listener for the login button
+        loginButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                loginUser();
+            }
+        });
+    }
+
+    private JButton createStyledButton(String text, Color bgColor, Color textColor) {
+        JButton button = new JButton(text);
+        button.setBackground(bgColor);
+        button.setForeground(textColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
+        button.setPreferredSize(new Dimension(150, 30));
+        button.setFont(new Font("Arial", Font.BOLD, 12));
+        return button;
+    }
+
+    private JLabel createStyledLabel(String text, Color textColor) {
+        JLabel label = new JLabel(text);
+        label.setForeground(textColor);
+        label.setFont(new Font("Arial", Font.BOLD, 12));
+        return label;
+    }
+
+    private void loginUser() {
+        // Bypass authentication for any entered username and password
+        String username = usernameField.getText();
+        @SuppressWarnings("deprecation")
+        String password = passwordField.getText();
+
+        // Directly open the Library Management System UI
+        LibraryManagementSystemUI libraryUI = new LibraryManagementSystemUI();
+        libraryUI.setVisible(true);
+
+        // Close the current login window
+        this.dispose();
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            LoginUI loginUI = new LoginUI();
+            loginUI.setVisible(true);
+        });
+    }
+}
